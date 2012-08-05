@@ -36,11 +36,7 @@
             'link_settings': {
               'libraries': [
                 'AudioUnit.framework',
-                'AudioToolbox.framework',
-                'CoreMIDI.framework',
-                'CoreAudio.framework',
-                'CoreServices.framework',
-                'CoreFoundation.framework',
+                'AudioToolbox.framework'
               ],
             }
           }
