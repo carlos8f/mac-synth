@@ -10,7 +10,7 @@
   "devDependencies": {},
   "scripts": {
     "test": "node test/basic.js",
-    "install": "node-gyp rebuild",
+    "install": "node-gyp rebuild --release",
     "start": "./bin/instrument.js"
   },
   "author": "Carlos Rodriguez",
