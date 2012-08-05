@@ -8,6 +8,7 @@
     "idgen": "~1.0.2"
   },
   "devDependencies": {},
+  "bin": "./bin/instrument.js",
   "scripts": {
     "test": "node test/basic.js",
     "install": "node-gyp rebuild",
