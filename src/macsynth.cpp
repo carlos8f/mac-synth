@@ -22,35 +22,24 @@ OSStatus  CreateAUGraph (AUGraph &outGraph, AudioUnit &outSynth)
 {
   OSStatus result;
   //create the nodes of the graph
-  AUNode synthNode, limiterNode, outNode;
+  AUNode synthNode, outNode;
+
+  require_noerr (result = NewAUGraph (&outGraph), home);
   
   AudioComponentDescription cd;
   cd.componentManufacturer = kAudioUnitManufacturer_Apple;
   cd.componentFlags = 0;
   cd.componentFlagsMask = 0;
-
-  require_noerr (result = NewAUGraph (&outGraph), home);
-
   cd.componentType = kAudioUnitType_MusicDevice;
   cd.componentSubType = kAudioUnitSubType_DLSSynth;
-
   require_noerr (result = AUGraphAddNode (outGraph, &cd, &synthNode), home);
 
-  cd.componentType = kAudioUnitType_Effect;
-  cd.componentSubType = kAudioUnitSubType_PeakLimiter;  
-
-  require_noerr (result = AUGraphAddNode (outGraph, &cd, &limiterNode), home);
-
   cd.componentType = kAudioUnitType_Output;
-  cd.componentSubType = kAudioUnitSubType_DefaultOutput;  
+  cd.componentSubType = kAudioUnitSubType_DefaultOutput;
   require_noerr (result = AUGraphAddNode (outGraph, &cd, &outNode), home);
-  
+
   require_noerr (result = AUGraphOpen (outGraph), home);
-  
-  require_noerr (result = AUGraphConnectNodeInput (outGraph, synthNode, 0, limiterNode, 0), home);
-  require_noerr (result = AUGraphConnectNodeInput (outGraph, limiterNode, 0, outNode, 0), home);
-  
-  // ok we're good to go - get the Synth Unit...
+  require_noerr (result = AUGraphConnectNodeInput (outGraph, synthNode, 0, outNode, 0), home);
   require_noerr (result = AUGraphNodeInfo(outGraph, synthNode, 0, &outSynth), home);
 
 home:
