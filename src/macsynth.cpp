@@ -1,105 +1,103 @@
 #include <node.h>
 #include <v8.h>
-#include <CoreServices/CoreServices.h> //for file stuff
 #include <AudioUnit/AudioUnit.h>
-#include <AudioToolbox/AudioToolbox.h> //for AUGraph
-#include <unistd.h> // used for usleep...
+#include <AudioToolbox/AudioToolbox.h>
 
-using namespace v8;
 using namespace node;
 
-// some MIDI constants:
-enum {
-  kMidiMessage_ControlChange    = 0xB,
-  kMidiMessage_ProgramChange    = 0xC,
-  kMidiMessage_BankMSBControl   = 0,
-  kMidiMessage_BankLSBControl   = 32,
-  kMidiMessage_NoteOn           = 0x9
+class MacSynth : ObjectWrap
+{
+private:
+    AUGraph graph;
+    AudioUnit synthUnit;
+public:
+    static v8::Persistent<v8::FunctionTemplate> s_ct;
+    static void Init(v8::Handle<v8::Object> target)
+    {
+        v8::HandleScope scope;
+        v8::Local<v8::FunctionTemplate> t = v8::FunctionTemplate::New(New);
+        
+        s_ct = v8::Persistent<v8::FunctionTemplate>::New(t);
+        s_ct->InstanceTemplate()->SetInternalFieldCount(1);
+        s_ct->SetClassName(v8::String::NewSymbol("MacSynth"));
+        
+        NODE_SET_PROTOTYPE_METHOD(s_ct, "send", Send);
+        
+        target->Set(v8::String::NewSymbol("synth"),
+                    s_ct->GetFunction());
+    }
+    
+    MacSynth()
+    {
+        AUNode synthNode, outputNode;
+        graph = 0;
+        NewAUGraph(&graph);
+        
+        AudioComponentDescription cd;
+        cd.componentManufacturer = kAudioUnitManufacturer_Apple;
+        cd.componentFlags = 0;
+        cd.componentFlagsMask = 0;
+        cd.componentType = kAudioUnitType_MusicDevice;
+        cd.componentSubType = kAudioUnitSubType_DLSSynth;
+        AUGraphAddNode(graph, &cd, &synthNode);
+
+        cd.componentType = kAudioUnitType_Output;
+        cd.componentSubType = kAudioUnitSubType_DefaultOutput;
+        AUGraphAddNode(graph, &cd, &outputNode);
+
+        AUGraphOpen(graph);
+        AUGraphConnectNodeInput(graph, synthNode, 0, outputNode, 0);
+        AUGraphNodeInfo(graph, synthNode, 0, &synthUnit);
+        AUGraphInitialize(graph);
+        AUGraphStart(graph);
+    }
+    
+    ~MacSynth()
+    {
+        AUGraphStop(graph);
+        DisposeAUGraph(graph);
+    }
+
+    static v8::Handle<v8::Value> New(const v8::Arguments& args)
+    {
+        v8::HandleScope scope;
+        MacSynth* synth = new MacSynth();
+        synth->Wrap(args.This());
+        return args.This();
+    }
+    
+    static v8::Handle<v8::Value> Send(const v8::Arguments& args)
+    {
+        v8::HandleScope scope;
+        MacSynth* synth = ObjectWrap::Unwrap<MacSynth>(args.This());
+        if (args.Length() == 0 || !args[0]->IsArray()) {
+            return ThrowException(v8::Exception::TypeError(
+                v8::String::New("First argument must be an array")));
+        }
+
+        v8::Local<v8::Object> message = args[0]->ToObject();
+        size_t messageLength = message->Get(v8::String::New("length"))->Int32Value();
+
+        if (messageLength != 3) {
+            return ThrowException(v8::Exception::TypeError(
+                v8::String::New("Message array must have 3 elements")));
+        }
+
+        UInt32 status = message->Get(v8::Integer::New(0))->Int32Value();
+        UInt32 data1 = message->Get(v8::Integer::New(1))->Int32Value();
+        UInt32 data2 = message->Get(v8::Integer::New(2))->Int32Value();
+
+        MusicDeviceMIDIEvent(synth->synthUnit, status, data1, data2, 0);
+        return scope.Close(v8::Undefined());
+    }
 };
 
-// This call creates the Graph and the Synth unit...
-OSStatus  CreateAUGraph (AUGraph &outGraph, AudioUnit &outSynth)
-{
-  OSStatus result;
-  //create the nodes of the graph
-  AUNode synthNode, outNode;
+v8::Persistent<v8::FunctionTemplate> MacSynth::s_ct;
 
-  require_noerr (result = NewAUGraph (&outGraph), home);
-  
-  AudioComponentDescription cd;
-  cd.componentManufacturer = kAudioUnitManufacturer_Apple;
-  cd.componentFlags = 0;
-  cd.componentFlagsMask = 0;
-  cd.componentType = kAudioUnitType_MusicDevice;
-  cd.componentSubType = kAudioUnitSubType_DLSSynth;
-  require_noerr (result = AUGraphAddNode (outGraph, &cd, &synthNode), home);
-
-  cd.componentType = kAudioUnitType_Output;
-  cd.componentSubType = kAudioUnitSubType_DefaultOutput;
-  require_noerr (result = AUGraphAddNode (outGraph, &cd, &outNode), home);
-
-  require_noerr (result = AUGraphOpen (outGraph), home);
-  require_noerr (result = AUGraphConnectNodeInput (outGraph, synthNode, 0, outNode, 0), home);
-  require_noerr (result = AUGraphNodeInfo(outGraph, synthNode, 0, &outSynth), home);
-
-home:
-  return result;
+extern "C" {
+    void init (v8::Handle<v8::Object> target)
+    {
+        MacSynth::Init(target);
+    }
+    NODE_MODULE(macsynth, init)
 }
-
-Handle<Value> Play(const Arguments& args) {
-  HandleScope scope;
-
-  AUGraph graph = 0;
-  AudioUnit synthUnit;
-  OSStatus result;
-  
-  UInt8 midiChannelInUse = 0; //we're using midi channel 1...
-  
-  require_noerr (result = CreateAUGraph (graph, synthUnit), home);
-
-  // ok we're set up to go - initialize and start the graph
-  require_noerr (result = AUGraphInitialize (graph), home);
-
-    //set our bank
-  require_noerr (result = MusicDeviceMIDIEvent(synthUnit, 
-                kMidiMessage_ControlChange << 4 | midiChannelInUse, 
-                kMidiMessage_BankMSBControl, 0,
-                0/*sample offset*/), home);
-
-  require_noerr (result = MusicDeviceMIDIEvent(synthUnit, 
-                kMidiMessage_ProgramChange << 4 | midiChannelInUse, 
-                0/*prog change num*/, 0,
-                0/*sample offset*/), home);
-  
-  require_noerr (result = AUGraphStart (graph), home);
-
-  // we're going to play an octave of MIDI notes: one a second
-  for (int i = 0; i < 13; i++) {
-    UInt32 noteNum = i + 60;
-    UInt32 onVelocity = 127;
-    UInt32 noteOnCommand =  kMidiMessage_NoteOn << 4 | midiChannelInUse;
-    
-    require_noerr (result = MusicDeviceMIDIEvent(synthUnit, noteOnCommand, noteNum, onVelocity, 0), home);
-    
-      // sleep for a second
-    usleep (1 * 1000 * 1000);
-
-    require_noerr (result = MusicDeviceMIDIEvent(synthUnit, noteOnCommand, noteNum, 0, 0), home);
-  }
-  
-  // ok we're done now
-
-home:
-  if (graph) {
-    AUGraphStop (graph); // stop playback - AUGraphDispose will do that for us but just showing you what to do
-    DisposeAUGraph (graph);
-  }
-
-  return scope.Close(Undefined());
-}
-
-void init(Handle<Object> target) {
-  NODE_SET_METHOD(target, "play", Play);
-}
-
-NODE_MODULE(macsynth, init);

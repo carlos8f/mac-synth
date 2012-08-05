@@ -1,2 +1,5 @@
-var driver = require('bindings')('macsynth');
-driver.play();
+var synth = require('./')();
+
+process.on('exit', function() {
+  synth.closePort();
+});

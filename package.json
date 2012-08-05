@@ -2,9 +2,10 @@
   "name": "macsynth",
   "version": "0.0.0",
   "description": "Unleash your mac's native General MIDI device.",
-  "main": "test.js",
   "dependencies": {
-    "bindings": "~1.0.0"
+    "bindings": "~1.0.0",
+    "midi": "~0.6.0",
+    "idgen": "~1.0.2"
   },
   "devDependencies": {},
   "scripts": {
