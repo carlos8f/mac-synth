@@ -1,6 +1,6 @@
 {
   "name": "mac-synth",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Unleash the internal General MIDI synth of your mac",
   "dependencies": {
     "bindings": "~1.0.0",
