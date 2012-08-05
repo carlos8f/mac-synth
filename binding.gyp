@@ -1,30 +1,14 @@
 {
   'targets': [
     {
-      'target_name': 'macsynth',
+      'target_name': 'synth',
       'include_dirs': [
         'src'
       ],
       'sources': [
-        'src/macsynth.cpp'
+        'src/synth.cpp'
       ],
       'conditions': [
-        ['OS=="linux"',
-          {
-            'cflags_cc!': [
-              '-fno-exceptions'
-            ],
-            'defines': [
-              '__LINUX_ALSASEQ__'
-            ],
-            'link_settings': {
-              'libraries': [
-                '-lasound',
-                '-lpthread',
-              ]
-            }
-          }
-        ],
         ['OS=="mac"',
           {
             'defines': [
@@ -37,18 +21,6 @@
               'libraries': [
                 'AudioUnit.framework',
                 'AudioToolbox.framework'
-              ],
-            }
-          }
-        ],
-        ['OS=="win"',
-          {
-            'defines': [
-              '__WINDOWS_MM__'
-            ],
-            'link_settings': {
-              'libraries': [
-                '-lwinmm.lib'
               ],
             }
           }

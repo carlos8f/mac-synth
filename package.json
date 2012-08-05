@@ -9,10 +9,14 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "install": "node-gyp rebuild"
+    "test": "node test/basic.js",
+    "install": "node-gyp rebuild",
+    "start": "./bin/instrument.js"
   },
   "author": "Carlos Rodriguez",
   "license": "MIT",
-  "gypfile": true
+  "gypfile": true,
+  "engines": {
+    "node": ">= 0.8.0"
+  }
 }
