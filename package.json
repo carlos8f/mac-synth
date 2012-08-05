@@ -1,0 +1,17 @@
+{
+  "name": "macsynth",
+  "version": "0.0.0",
+  "description": "Unleash your mac's native General MIDI device.",
+  "main": "test.js",
+  "dependencies": {
+    "bindings": "~1.0.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install": "node-gyp rebuild"
+  },
+  "author": "Carlos Rodriguez",
+  "license": "MIT",
+  "gypfile": true
+}
