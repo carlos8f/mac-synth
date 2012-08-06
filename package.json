@@ -17,6 +17,13 @@
   },
   "author": "Carlos Rodriguez",
   "license": "MIT",
+  "keywords": [
+    "midi",
+    "synth",
+    "gm",
+    "music",
+    "coreaudio"
+  ],
   "gypfile": true,
   "engines": {
     "node": ">= 0.8.0"
